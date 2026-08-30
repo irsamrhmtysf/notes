@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Notes</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    body { background:#0a0a0f; }
+    .prose { color:#cbd5e1; line-height:1.75; }
+    .prose h1 { color:#fff; font-size:1.875rem; font-weight:700; margin:0 0 1rem; }
+    .prose h2 { color:#fff; font-size:1.35rem; font-weight:600; margin:1.6rem 0 .6rem; }
+    .prose h3 { color:#e2e8f0; font-size:1.1rem; font-weight:600; margin:1.2rem 0 .4rem; }
+    .prose p { margin:.8rem 0; }
+    .prose a { color:#38bdf8; }
+    .prose ul, .prose ol { margin:.8rem 0 .8rem 1.25rem; }
+    .prose li { margin:.25rem 0; }
+    .prose code { background:#1e293b; padding:.1rem .35rem; border-radius:.3rem; font-size:.875rem; }
+    .prose pre { background:#111827; padding:1rem; border-radius:.75rem; overflow:auto; }
+    .prose pre code { background:none; padding:0; }
+    .prose blockquote { border-left:3px solid #38bdf8; padding-left:1rem; color:#94a3b8; }
+    .prose img { max-width:100%; border-radius:.75rem; }
+  </style>
+</head>
+<body class="font-sans text-slate-300 antialiased min-h-screen">
+  <header class="border-b border-white/5 sticky top-0 bg-[#0a0a0f]/90 backdrop-blur z-10">
+    <div class="max-w-3xl mx-auto px-4 py-3 flex items-center justify-between">
+      <a href="#/" class="font-semibold text-white">Notes</a>
+      <a href="admit.html" class="text-sm text-sky-400 hover:text-sky-300">Admin</a>
+    </div>
+  </header>
+  <main id="app" class="max-w-3xl mx-auto px-4 py-8"></main>
+  <script>
+    (function () {
+      const saved = JSON.parse(localStorage.getItem('mdcms') || '{}');
+      if (!saved.dir || saved.dir.indexOf('cms') !== -1) {
+        saved.dir = 'notes/posts';
+        localStorage.setItem('mdcms', JSON.stringify(saved));
+      }
+      const OWNER = saved.owner || 'irsamrhmtysf';
+      const REPO = saved.repo || 'irsamrhmtysf.github.io';
+      const BRANCH = saved.branch || 'master';
+      const DIR = (saved.dir || 'notes/posts').replace(/^\/|\/$/g, '');
+      const API = 'https://api.github.com/repos/' + OWNER + '/' + REPO + '/contents/' + DIR;
+      const app = document.getElementById('app');
+
+      function route() {
+        return decodeURIComponent((location.hash || '').replace(/^#\/?/, ''));
+      }
+
+      async function listMd() {
+        try {
+          const r = await fetch('posts/index.json?t=' + Date.now());
+          if (r.ok) {
+            const data = await r.json();
+            const names = Array.isArray(data) ? data : (data.files || []);
+            return names.map(function (n) {
+              return typeof n === 'string' ? { name: n, size: 0 } : n;
+            }).filter(function (f) { return f.name && f.name.slice(-3) === '.md'; });
+          }
+        } catch (e) {}
+        const r = await fetch(API + '?ref=' + BRANCH);
+        if (!r.ok) throw new Error('Cannot load posts');
+        const files = await r.json();
+        return (Array.isArray(files) ? files : []).filter(function (f) {
+          return f.type === 'file' && f.name && f.name.slice(-3) === '.md';
+        });
+      }
+
+      async function getMd(name) {
+        try {
+          const local = await fetch('posts/' + encodeURIComponent(name) + '?t=' + Date.now());
+          if (local.ok) return await local.text();
+        } catch (e) {}
+        const r = await fetch(API + '/' + encodeURIComponent(name) + '?ref=' + BRANCH);
+        if (!r.ok) throw new Error('Not found');
+        const data = await r.json();
+        return decodeURIComponent(escape(atob((data.content || '').replace(/\n/g, ''))));
+      }
+
+      function titleFrom(name, md) {
+        const m = md && md.match(/^#\s+(.+)$/m);
+        return m ? m[1].trim() : name.replace(/\.md$/, '');
+      }
+
+      function listView(files) {
+        app.innerHTML = '<h1 class="text-2xl font-bold text-white mb-6">Articles</h1>' +
+          (files.length
+            ? '<ul class="space-y-2">' + files.map(function (f) {
+                return '<li><a href="#/' + encodeURIComponent(f.name) + '" class="block rounded-xl border border-white/5 bg-white/[0.03] px-4 py-3 hover:border-sky-500/40"><p class="text-white font-medium">' +
+                  f.name.replace(/\.md$/, '') + '</p></a></li>';
+              }).join('') + '</ul>'
+            : '<p class="text-slate-500">No .md files yet.</p>');
+      }
+
+      function articleView(name, md) {
+        app.innerHTML = '<a href="#/" class="text-sm text-sky-400">← All articles</a><article class="prose mt-6">' +
+          marked.parse(md) + '</article><p class="mt-10 text-xs text-slate-600">' + name + '</p>';
+      }
+
+      async function render() {
+        const path = route();
+        app.innerHTML = '<p class="text-slate-500">Loading…</p>';
+        try {
+          if (!path) listView(await listMd());
+          else {
+            const md = await getMd(path);
+            document.title = titleFrom(path, md);
+            articleView(path, md);
+          }
+        } catch (e) {
+          app.innerHTML = '<p class="text-red-400">' + e.message + '</p><a href="#/" class="text-sky-400 text-sm">Back</a>';
+        }
+      }
+
+      window.addEventListener('hashchange', render);
+      render();
+    })();
+  </script>
+</body>
+</html>
