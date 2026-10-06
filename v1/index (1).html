@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#0a0a0f" />
+  <title>Notes V1</title>
+  <link rel="manifest" href="manifest.json" />
+  <link rel="icon" href="icon.svg" />
+  <style>
+    :root {
+      --bg:#0a0a0f; --card:#12121a; --line:rgba(255,255,255,.08);
+      --text:#e2e8f0; --mute:#94a3b8; --dim:#64748b;
+      --sky:#38bdf8; --sky2:#0ea5e9; --ok:#22c55e; --bad:#f43f5e; --warn:#fbbf24;
+    }
+    * { box-sizing:border-box; }
+    html,body { margin:0; background:var(--bg); color:var(--text); font:16px/1.5 Inter,system-ui,sans-serif; }
+    button,input,textarea,select { font:inherit; color:inherit; }
+    button { background:none; border:0; cursor:pointer; }
+    a { color:var(--sky); text-decoration:none; }
+    header {
+      position:sticky; top:0; z-index:20;
+      background:rgba(10,10,15,.92); backdrop-filter:blur(12px);
+      border-bottom:1px solid var(--line);
+      padding:12px 16px;
+    }
+    .row { display:flex; align-items:center; gap:8px; }
+    .between { justify-content:space-between; }
+    .brand { font-weight:700; letter-spacing:.02em; }
+    .pill { font-size:11px; padding:3px 8px; border-radius:99px; border:1px solid var(--line); color:var(--mute); }
+    .pill.on { color:#86efac; border-color:rgba(34,197,94,.35); }
+    .pill.off { color:#fda4af; border-color:rgba(244,63,94,.35); }
+    main { max-width:720px; margin:0 auto; padding:16px 16px 96px; }
+    .tabs { display:flex; gap:6px; margin:0 0 12px; overflow:auto; }
+    .tab { padding:6px 12px; border-radius:999px; border:1px solid var(--line); color:var(--mute); font-size:13px; white-space:nowrap; }
+    .tab.active { background:rgba(14,165,233,.15); color:var(--sky); border-color:rgba(14,165,233,.35); }
+    .search {
+      width:100%; background:#111318; border:1px solid var(--line);
+      border-radius:12px; padding:10px 12px; margin-bottom:12px;
+    }
+    .note {
+      display:block; width:100%; text-align:left;
+      background:var(--card); border:1px solid var(--line);
+      border-radius:14px; padding:12px 14px; margin:0 0 8px;
+    }
+    .note:active { transform:scale(.99); }
+    .title { font-weight:600; margin:0; }
+    .meta { font-size:12px; color:var(--dim); margin-top:4px; }
+    .dot { width:8px; height:8px; border-radius:50%; display:inline-block; }
+    .dot.pub { background:var(--ok); box-shadow:0 0 8px rgba(34,197,94,.6); }
+    .dot.priv { background:var(--bad); box-shadow:0 0 8px rgba(244,63,94,.5); }
+    .fab {
+      position:fixed; right:16px; bottom:16px; z-index:30;
+      width:56px; height:56px; border-radius:16px;
+      background:var(--sky2); color:#fff; font-size:28px; line-height:1;
+      box-shadow:0 8px 24px rgba(14,165,233,.35);
+    }
+    .panel { display:none; }
+    .panel.show { display:block; }
+    .field, textarea {
+      width:100%; background:#111318; border:1px solid var(--line);
+      border-radius:12px; padding:10px 12px; margin:0 0 8px;
+    }
+    textarea { min-height:42vh; resize:vertical; }
+    .actions { display:flex; flex-wrap:wrap; gap:8px; margin:8px 0 16px; }
+    .btn { padding:8px 14px; border-radius:10px; border:1px solid var(--line); font-size:14px; }
+    .btn.main { background:var(--sky2); border-color:transparent; color:#fff; }
+    .btn.danger { color:#fda4af; border-color:rgba(244,63,94,.3); }
+    .vis {
+      display:flex; gap:8px; margin:0 0 8px;
+    }
+    .vis label {
+      flex:1; text-align:center; padding:8px; border-radius:12px;
+      border:1px solid var(--line); font-size:13px; color:var(--mute);
+    }
+    .vis input { display:none; }
+    .vis label.on-pub { border-color:rgba(34,197,94,.5); color:#86efac; background:rgba(34,197,94,.08); }
+    .vis label.on-priv { border-color:rgba(244,63,94,.5); color:#fda4af; background:rgba(244,63,94,.08); }
+    .toast {
+      position:fixed; left:50%; bottom:84px; transform:translateX(-50%) translateY(20px);
+      background:#1e293b; color:#fff; padding:10px 14px; border-radius:12px;
+      font-size:13px; opacity:0; pointer-events:none; transition:.25s; z-index:50;
+      border:1px solid var(--line); max-width:90%;
+    }
+    .toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
+    .empty { color:var(--dim); text-align:center; padding:40px 10px; }
+    h1 { font-size:22px; margin:0 0 12px; }
+    .hint { font-size:12px; color:var(--dim); margin:0 0 12px; }
+    .set label { display:block; font-size:12px; color:var(--mute); margin:10px 0 4px; }
+    .back { color:var(--sky); font-size:14px; margin-bottom:10px; }
+    article.prose { color:#cbd5e1; }
+    article.prose h1 { font-size:26px; }
+    article.prose h2 { font-size:18px; margin:18px 0 8px; }
+    article.prose p { margin:10px 0; }
+    article.prose a { color:var(--sky); }
+    article.prose ul { padding-left:18px; }
+    article.prose code { background:#1e293b; padding:1px 5px; border-radius:4px; }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="row between">
+      <div class="row">
+        <span class="brand">Notes V1</span>
+        <span id="net" class="pill off">offline</span>
+      </div>
+      <div class="row">
+        <button class="pill" id="btnSync" hidden>Sync</button>
+        <button class="pill" id="btnSettings">Settings</button>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <section id="listPanel" class="panel show">
+      <div class="tabs" id="tabs"></div>
+      <input class="search" id="q" placeholder="Search notes" />
+      <div id="list"></div>
+    </section>
+
+    <section id="editPanel" class="panel">
+      <button class="back" id="backEdit">← List</button>
+      <input class="field" id="title" placeholder="Title" />
+      <input class="field" id="category" placeholder="Category (tap to change anytime)" list="catlist" />
+      <datalist id="catlist"></datalist>
+      <div class="vis">
+        <label id="labPriv"><input type="radio" name="vis" value="private" checked /> ● Private</label>
+        <label id="labPub"><input type="radio" name="vis" value="public" /> ● Public</label>
+      </div>
+      <textarea id="body" placeholder="Write…"></textarea>
+      <div class="actions">
+        <button class="btn main" id="btnSave">Save</button>
+        <button class="btn" id="btnView">Read</button>
+        <button class="btn" id="btnShare">Share</button>
+        <button class="btn danger" id="btnDel">Delete</button>
+      </div>
+    </section>
+
+    <section id="readPanel" class="panel">
+      <button class="back" id="backRead">← Back</button>
+      <div class="row" style="gap:10px;margin-bottom:8px">
+        <span id="readDot" class="dot priv"></span>
+        <span id="readCat" class="meta"></span>
+      </div>
+      <article class="prose" id="readBody"></article>
+      <div class="actions">
+        <button class="btn main" id="btnEditFromRead">Edit</button>
+        <button class="btn" id="btnShareRead">Share</button>
+      </div>
+    </section>
+
+    <section id="setPanel" class="panel set">
+      <button class="back" id="backSet">← List</button>
+      <h1>Settings</h1>
+      <p class="hint">Offline = private on this device. Online = public notes sync and can be shared.</p>
+      <label>Local backup</label>
+      <div class="actions">
+        <button class="btn" id="btnExport">Export data</button>
+        <button class="btn" id="btnImport">Import data</button>
+        <button class="btn" id="btnFolder">Set folder</button>
+        <input id="fileImport" type="file" accept=".json,application/json" hidden />
+      </div>
+      <p class="hint" id="folderHint">Folder access works on desktop Chrome. On phone use Export / Import.</p>
+      <label>GitHub owner</label>
+      <input class="field" id="cfgOwner" />
+      <label>Repo</label>
+      <input class="field" id="cfgRepo" />
+      <label>Branch</label>
+      <input class="field" id="cfgBranch" />
+      <label>Public folder</label>
+      <input class="field" id="cfgDir" />
+      <label>GitHub token (this device only, never shown to others)</label>
+      <input class="field" id="cfgToken" type="password" autocomplete="off" placeholder="Fine-grained PAT · contents only" />
+      <label>PIN (lock editor on this device)</label>
+      <input class="field" id="cfgPin" type="password" placeholder="Optional new PIN" />
+      <div class="actions">
+        <button class="btn main" id="btnSaveCfg">Save settings</button>
+      </div>
+    </section>
+  </main>
+
+  <button class="fab" id="fab" title="New note">+</button>
+  <div class="toast" id="toast"></div>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/dompurify@3.1.6/dist/purify.min.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
